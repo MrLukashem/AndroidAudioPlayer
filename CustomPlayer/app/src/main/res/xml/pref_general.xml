@@ -1,0 +1,10 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <SwitchPreference
+        android:defaultValue="false"
+        android:key="CustomPlayerSwitch"
+        android:summary="Only for advance users!!!"
+        android:title="Use Custom Audio Player" />
+
+
+</PreferenceScreen>
