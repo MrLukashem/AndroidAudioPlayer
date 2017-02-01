@@ -139,9 +139,7 @@ public class PlayerActivity extends AppCompatActivity {
 
     private boolean initRealPlayer(boolean useCustomPlayer) {
         mMainPlayer = new MainPlayer(useCustomPlayer);
-
-        boolean isReady = mMainPlayer.setDataSource(mDataSourcePath) && mMainPlayer.prepare();
-        return isReady;
+        return mMainPlayer.setDataSource(mDataSourcePath) && mMainPlayer.prepare();
     }
 
     private void releaseResources() {
@@ -153,7 +151,7 @@ public class PlayerActivity extends AppCompatActivity {
         if (mTrackTimer != null) {
             mTrackTimer.cancel();
         }
-        
+
         mDisablePlayer = true;
     }
 
