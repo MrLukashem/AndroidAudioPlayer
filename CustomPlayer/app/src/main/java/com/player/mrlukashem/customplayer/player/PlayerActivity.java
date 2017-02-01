@@ -150,7 +150,10 @@ public class PlayerActivity extends AppCompatActivity {
         }
 
         mMainPlayer.release();
-        mTrackTimer.cancel();
+        if (mTrackTimer != null) {
+            mTrackTimer.cancel();
+        }
+        
         mDisablePlayer = true;
     }
 
