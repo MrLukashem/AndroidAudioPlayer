@@ -39,6 +39,7 @@ public class PlayerActivity extends AppCompatActivity {
     private TextView mTitleTV;
     private TextView mArtistTV;
     private ImageView mAlbumArtIV;
+    private Button mPlayPauseButton;
     private int mAlbumArtWidthPX;
     private int mAlbumArtHeightPX;
 
@@ -52,14 +53,23 @@ public class PlayerActivity extends AppCompatActivity {
     private String mDataSourcePath = "";
     private boolean mUseCustomPlayer = false;
 
+    private void switchToPlayButton(Button button) {
+        button.setText(getResources().getString(R.string.play));
+        button.setBackground(mDefaultButtonDrawable);
+    }
+
+    private void switchToPauseButton(Button button) {
+        button.setText(getResources().getString(R.string.pause));
+        button.setBackgroundColor(mClickColor);
+    }
+
     private void handlePlayPauseState(Button button) {
         if (mDisablePlayer) {
             initRealPlayer(mUseCustomPlayer);
         }
 
         if (mIsPlaying) {
-            button.setText(getResources().getString(R.string.pause));
-            button.setBackgroundColor(mClickColor);
+            switchToPauseButton(button);
 
             if (!mMainPlayer.play()) {
                 mIsPlaying = false;
@@ -67,8 +77,7 @@ public class PlayerActivity extends AppCompatActivity {
 
             startTimer();
         } else {
-            button.setText(getResources().getString(R.string.play));
-            button.setBackground(mDefaultButtonDrawable);
+            switchToPlayButton(button);
 
             mMainPlayer.pause();
             initializeTimer();
@@ -112,6 +121,7 @@ public class PlayerActivity extends AppCompatActivity {
         mTitleTV = (TextView)findViewById(R.id.titleTV);
         mArtistTV = (TextView)findViewById(R.id.artistTV);
         mAlbumArtIV = (ImageView)findViewById(R.id.trackThumbnailIV);
+        mPlayPauseButton = (Button)findViewById(R.id.playPauseButton);
 
         findViewById(R.id.fastSeekLeftButton).setOnTouchListener(new View.OnTouchListener() {
             @Override
@@ -153,6 +163,25 @@ public class PlayerActivity extends AppCompatActivity {
         }
 
         mDisablePlayer = true;
+        mIsPlaying = false;
+    }
+
+    private void resetPlayer() {
+        releaseResources();
+
+        int curPos = 0;
+        int dur = mDuration.get();
+
+        updateProgressBar(curPos, dur);
+        switchToPlayButton(mPlayPauseButton);
+    }
+
+    private void updateProgressBar(int curPos, int dur) {
+        mSeekBar.setProgress(curPos);
+        Log.e(TAG, "updateProgressBar = " + Utils.msToSeconds(dur));
+        mTimerFromStartTV.setText(Utils.secondsToTimeString(curPos));
+        mTimerFromEndTV.setText(
+                Utils.secondsToTimeString(Utils.msToSeconds(dur) - curPos));
     }
 
     // TODO: Create custom timer.
@@ -179,13 +208,7 @@ public class PlayerActivity extends AppCompatActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            int cursPos = mCurrentTimeInSeconds.get();
-                            int dur = mDuration.get();
-                            mSeekBar.setProgress(cursPos);
-
-                            mTimerFromStartTV.setText(Utils.secondsToTimeString(cursPos));
-                            mTimerFromEndTV.setText(
-                                    Utils.secondsToTimeString(Utils.msToSeconds(dur) - cursPos));
+                            updateProgressBar(mCurrentTimeInSeconds.get(), mDuration.get());
                         }
                     });
                 }
@@ -193,7 +216,7 @@ public class PlayerActivity extends AppCompatActivity {
 
             @Override
             public void onFinish() {
-                releaseResources();
+                resetPlayer();
                 // TODO: Do we need handle finish?
             }
         };
@@ -272,7 +295,14 @@ public class PlayerActivity extends AppCompatActivity {
 
     public void PlayOnButtonClick(View view) {
         if (mDisablePlayer) {
-            return;
+            // Check more more time real player initialization if it fails show again error toast.
+            boolean isReady = initRealPlayer(mUseCustomPlayer);
+            if (!isReady) {
+                showCannotPlayContentToast();
+                return;
+            }
+
+            mDisablePlayer = false;
         }
 
         mIsPlaying = !mIsPlaying;
