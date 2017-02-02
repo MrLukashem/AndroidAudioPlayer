@@ -3,6 +3,7 @@ package com.player.mrlukashem.customplayer;
 import android.*;
 import android.app.Fragment;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Build;
@@ -24,10 +25,30 @@ import com.player.mrlukashem.customplayer.fragments.SortedListFragment;
 import com.player.mrlukashem.customplayer.fragments.TrackListFragment;
 import com.player.mrlukashem.customplayer.interfaces.IShowAlbum;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, IShowAlbum {
 
     private static final int REQUEST_PERMISSION = 12;
+    public static final String FAV_TRACKS = "fav_tracks";
+
+    private void initFavouriteListFragment() {
+        android.app.FragmentManager fragmentManager = getFragmentManager();
+        Fragment fragment = new TrackListFragment();
+        Bundle args = new Bundle();
+        args.putBoolean(TrackListFragment.DATA_SET, true);
+
+        fragment.setArguments(args);
+
+        fragmentManager
+                .beginTransaction()
+                .replace(R.id.content_main, fragment)
+                .commit();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +76,13 @@ public class MainActivity extends AppCompatActivity
         } else {
             // TODO: To be filled.
         }
+
+        initFavouriteListFragment();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
     }
 
     @Override

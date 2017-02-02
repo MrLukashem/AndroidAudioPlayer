@@ -1,10 +1,12 @@
 package com.player.mrlukashem.customplayer.player;
 
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.CountDownTimer;
+import android.preference.PreferenceManager;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -18,9 +20,12 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.player.mrlukashem.customplayer.MainActivity;
 import com.player.mrlukashem.customplayer.R;
 import com.player.mrlukashem.customplayer.utils.Utils;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PlayerActivity extends AppCompatActivity {
@@ -307,5 +312,28 @@ public class PlayerActivity extends AppCompatActivity {
 
         mIsPlaying = !mIsPlaying;
         handlePlayPauseState((Button)view);
+    }
+
+    private void addCurrentTrackToFavouritesList() {
+        SharedPreferences settings =
+                PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        Set<String> tracksTemp = settings.getStringSet(MainActivity.FAV_TRACKS, new HashSet<String>());
+        Set<String> tracks = new HashSet<>(tracksTemp);
+        tracks.add(mDataSourcePath);
+
+        settings.edit().putStringSet(MainActivity.FAV_TRACKS, tracks).apply();
+    }
+
+    private void showToast(String message) {
+        Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
+    }
+
+    public void addToFavourite(View view) {
+        if (mDataSourcePath.isEmpty()) {
+            return;
+        }
+
+        addCurrentTrackToFavouritesList();
+        showToast("Track " + mTitleTV.getText() + "has been added to favourites list");
     }
 }

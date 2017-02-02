@@ -2,6 +2,7 @@ package com.player.mrlukashem.customplayer.fragments;
 
 import android.app.Fragment;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -21,6 +22,11 @@ import com.player.mrlukashem.customplayer.adapters.TrackListAdapter;
 import com.player.mrlukashem.customplayer.player.MainPlayer;
 import com.player.mrlukashem.customplayer.player.PlayerActivity;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 /**
  * Created by MrLukashem on 30.01.2017.
  */
@@ -29,10 +35,14 @@ public class TrackListFragment extends Fragment {
 
     public static final String ALBUM = "ALBUM";
     public static final String ARTIST = "ARTIST";
+    public static final String DATA_SET = "DATA_SET";
 
     private static final int ALBUM_MODE = 1;
     private static final int ARTIST_MODE = 2;
+    private static final int DATA_SET_MODE = 3;
     private int mMode = ALBUM_MODE;
+
+    private List<String> mDataList = new ArrayList<>();
 
     private void setOnClickListener(ListView list) {
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -55,7 +65,55 @@ public class TrackListFragment extends Fragment {
         });
     }
 
+    private void prepareListViewUsingTracks(TrackListAdapter adapter) {
+        Cursor cursor;
+        ContentResolver resolver = getContext().getContentResolver();
+
+        for (String data : mDataList) {
+            cursor = resolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    new String[] {
+                            MediaStore.Audio.Media.TITLE,
+                            MediaStore.Audio.Media.DURATION,
+                            MediaStore.Audio.Media.ARTIST,
+                            MediaStore.Audio.Media.ALBUM_ID,
+                    },
+                    MediaStore.Audio.Media.DATA + "=" + "'" + data + "'",
+                    null, null);
+
+            if (cursor != null && cursor.getCount() >= 1) {
+                cursor.moveToFirst();
+
+                String title = cursor.getString(0);
+                int dur = cursor.getInt(1);
+                String artist = cursor.getString(2);
+                int albumID = cursor.getInt(3);
+
+                String albumArt = "";
+                Cursor cursor1 = resolver.query(
+                        MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
+                        new String[] { MediaStore.Audio.Albums.ALBUM_ART},
+                        MediaStore.Audio.Albums._ID + "=" + albumID, null, null);
+                if (cursor1 != null && cursor1.getCount() >= 1) {
+                    cursor1.moveToFirst();
+                    String temp = cursor1.getString(0);
+                    if (temp != null) {
+                        albumArt = temp;
+                    }
+                }
+
+                adapter.add(new TrackDesc(title, dur, data, artist, albumArt));
+            }
+
+            cursor.close();
+        }
+    }
+
     private void prepareListView(String key, TrackListAdapter adapter) {
+        if (mMode == DATA_SET_MODE) {
+            prepareListViewUsingTracks(adapter);
+            return;
+        }
+
         if (key.isEmpty()) {
             return;
         }
@@ -122,6 +180,18 @@ public class TrackListFragment extends Fragment {
             if (!arg.isEmpty()) {
                 mMode = ALBUM_MODE;
                 return arg;
+            }
+
+            boolean isDataSetMode = args.getBoolean(DATA_SET, true);
+            if (isDataSetMode) {
+                mMode = DATA_SET_MODE;
+
+                SharedPreferences settings =
+                        PreferenceManager.getDefaultSharedPreferences(getContext());
+                Set<String> tracks = settings.getStringSet("fav_tracks", new HashSet<String>());
+                for (String track : tracks) {
+                    mDataList.add(track);
+                }
             }
         }
 
