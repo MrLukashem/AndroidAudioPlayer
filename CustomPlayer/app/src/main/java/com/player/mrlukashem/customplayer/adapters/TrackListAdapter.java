@@ -42,7 +42,7 @@ public class TrackListAdapter extends ArrayAdapter<TrackDesc> {
         try {
             TextView titleTV = (TextView)rowView.findViewById(R.id.titleTV);
             TextView durTV = (TextView)rowView.findViewById(R.id.durTV);
-            
+
             titleTV.setText(getItem(position).getTitle());
             durTV.setText(Utils.secondsToTimeString(getItem(position).getDuration() / 1000));
         } catch (NullPointerException npe) {

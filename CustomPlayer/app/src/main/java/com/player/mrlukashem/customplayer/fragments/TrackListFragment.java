@@ -189,6 +189,7 @@ public class TrackListFragment extends Fragment {
                 SharedPreferences settings =
                         PreferenceManager.getDefaultSharedPreferences(getContext());
                 Set<String> tracks = settings.getStringSet("fav_tracks", new HashSet<String>());
+                mDataList.clear();
                 for (String track : tracks) {
                     mDataList.add(track);
                 }
