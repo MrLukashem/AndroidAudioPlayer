@@ -48,6 +48,8 @@ public class MainActivity extends AppCompatActivity
                 .beginTransaction()
                 .replace(R.id.content_main, fragment)
                 .commit();
+
+        setTitle("Favourites tracks list");
     }
 
     @Override
@@ -138,7 +140,7 @@ public class MainActivity extends AppCompatActivity
             sortedFragment.setArguments(args);
             fragmentManager
                     .beginTransaction()
-                    .add(R.id.content_main, sortedFragment)
+                    .replace(R.id.content_main, sortedFragment)
                     .addToBackStack(null)
                     .commit();
         } else if (id == R.id.nav_settings) {

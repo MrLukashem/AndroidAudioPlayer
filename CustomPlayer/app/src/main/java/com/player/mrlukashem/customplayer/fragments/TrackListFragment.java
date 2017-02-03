@@ -199,6 +199,12 @@ public class TrackListFragment extends Fragment {
         return "";
     }
 
+    private void setActivityTitle() {
+        if (mMode == DATA_SET_MODE) {
+            getActivity().setTitle("Favourites tracks list");
+        }
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -208,6 +214,8 @@ public class TrackListFragment extends Fragment {
         TrackListAdapter adapter = new TrackListAdapter(getContext(), R.layout.track_desc_item);
 
         prepareListView(extractArguments(), adapter);
+        setActivityTitle();
+
         setOnClickListener(list);
         list.setAdapter(adapter);
 

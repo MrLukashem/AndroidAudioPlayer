@@ -105,6 +105,14 @@ public class SortedListFragment extends Fragment {
         }
     }
 
+    private void setActivityName() {
+        if (mSortMode == SORT_BY_ALBUM) {
+            getActivity().setTitle("Albums");
+        } else {
+            getActivity().setTitle("Artists");
+        }
+    }
+
     public SortedListFragment() {
     }
 
@@ -122,6 +130,8 @@ public class SortedListFragment extends Fragment {
             mSortMode = args.getInt(SORT_MODE, SORT_BY_ALBUM);
         else
             mSortMode = SORT_BY_ALBUM;
+
+        setActivityName();
 
         list.setAdapter(adapter);
         prepareListItems(adapter);
