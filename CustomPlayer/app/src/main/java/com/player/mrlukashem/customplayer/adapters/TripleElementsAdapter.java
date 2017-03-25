@@ -1,6 +1,7 @@
 package com.player.mrlukashem.customplayer.adapters;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Parcelable;
@@ -80,11 +81,14 @@ public class TripleElementsAdapter extends ArrayAdapter<TripleListItem> {
                 ImageView thumbnailTV = (ImageView)rowView.findViewById(R.id.thumbNailIV);
                 // Set bitmap from Map that was put from non ui thread.
                 thumbnailTV.setImageBitmap(mMap.get(position));
+            } else {
+                holder.p_img.getLayoutParams().height = Utils.getPXFromDP(mImageSize, mContext);
+                holder.p_img.getLayoutParams().width = Utils.getPXFromDP(mImageSize, mContext);
+                holder.p_img.setBackgroundColor(Color.BLACK);
+                holder.p_img.setImageDrawable(
+                        getContext().getResources().getDrawable(R.mipmap.no_album_art_img,
+                                getContext().getTheme()));
             }
-
-            holder.p_img.getLayoutParams().height = Utils.getPXFromDP(mImageSize, mContext);
-            holder.p_img.getLayoutParams().width = Utils.getPXFromDP(mImageSize, mContext);
-            holder.p_img.setBackgroundColor(Color.WHITE);
         } catch (NullPointerException npe) {
             // TODO: We should handle.
             Log.e(TAG, npe.getMessage());
