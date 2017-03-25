@@ -24,6 +24,7 @@ import android.view.MenuItem;
 import com.player.mrlukashem.customplayer.fragments.SortedListFragment;
 import com.player.mrlukashem.customplayer.fragments.TrackListFragment;
 import com.player.mrlukashem.customplayer.interfaces.IShowAlbum;
+import com.player.mrlukashem.customplayer.nativeplayer.NativePlayer;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -50,6 +51,11 @@ public class MainActivity extends AppCompatActivity
                 .commit();
 
         setTitle("Favourites tracks list");
+
+        NativePlayer nativePlayer = new NativePlayer();
+        nativePlayer.play();
+        nativePlayer.pause();
+        nativePlayer.getCurrentPosition();
     }
 
     @Override
