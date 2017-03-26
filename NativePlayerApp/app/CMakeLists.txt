@@ -20,8 +20,11 @@ add_library( # Sets the name of the library.
              # Provides a relative path to your source file(s).
              # Associated headers in the same location as their source
              # file are automatically included.
-             src/main/cpp/native-lib.cpp
+             src/main/cpp/NativePlayer.cpp
+             src/main/cpp/NativeExtractor.cpp
              src/main/cpp/android_native_player_jni.cpp )
+
+include_directories( src/main/cpp/include/ )
 
 # Searches for a specified prebuilt library and stores the path as a
 # variable. Because system libraries are included in the search path by

@@ -52,6 +52,10 @@ public class NativePlayer extends NativePlayerJNIBridge implements IMediaPlayer 
 
     @Override
     public void seekTo(int ms) {
-        seekToJNI();
+        if (ms < 0) {
+            ms = 0;
+        }
+
+        seekToJNI(ms);
     }
 }

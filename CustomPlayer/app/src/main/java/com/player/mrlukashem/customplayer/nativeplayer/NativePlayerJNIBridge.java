@@ -25,5 +25,5 @@ class NativePlayerJNIBridge {
 
     protected native void releaseJNI();
 
-    protected native void seekToJNI();
+    protected native void seekToJNI(int ms);
 }

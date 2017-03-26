@@ -77,8 +77,8 @@ Java_com_player_mrlukashem_customplayer_nativeplayer_NativePlayerJNIBridge_seekT
 }
 
 JNIEXPORT void JNICALL
-Java_com_player_mrlukashem_nativeplayerapp_MainActivity_playJNI(JNIEnv *env, jobject instance) {
-
+Java_com_player_mrlukashem_nativeplayerapp_MainActivity_playJNI(
+        JNIEnv *env, jobject instance, jint ms) {
     // TODO
 
 }
