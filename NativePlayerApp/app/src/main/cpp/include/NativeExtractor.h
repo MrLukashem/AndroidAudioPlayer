@@ -5,7 +5,6 @@
 #ifndef CUSTOMPLAYER_NATIVEEXTRACTOR_H
 #define CUSTOMPLAYER_NATIVEEXTRACTOR_H
 
-
 class NativeExtractor {
 
 };

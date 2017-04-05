@@ -6,6 +6,8 @@
 #include <string>
 #include <android/log.h>
 
+#include "include/NativePlayer.h"
+
 #define APPNAME "android_native_player_jni"
 #define ALOGV(x) __android_log_print(ANDROID_LOG_VERBOSE, APPNAME, x);
 
@@ -33,6 +35,7 @@ Java_com_player_mrlukashem_customplayer_nativeplayer_NativePlayerJNIBridge_playJ
     ALOGV("playJNI");
     // TODO
 
+    NativePlayer nativePlayer;
 }
 
 JNIEXPORT void JNICALL
