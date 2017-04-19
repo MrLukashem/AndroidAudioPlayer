@@ -11,6 +11,14 @@
 #define APPNAME "android_native_player_jni"
 #define ALOGV(x) __android_log_print(ANDROID_LOG_VERBOSE, APPNAME, x);
 
+JNIEXPORT void JNICALL
+Java_com_player_mrlukashem_customplayer_latencyutils_LatencyMeasurement_startLatencyTest(
+        JNIEnv *env, jobject instance, jint bitDepth, jint sampleRate) {
+
+    // TODO
+
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
