@@ -12,9 +12,17 @@ import java.io.IOException;
 
 public class NativePlayer extends NativePlayerJNIBridge implements IMediaPlayer {
 
+    public NativePlayer() {
+        createPlayerRequest();
+    }
+
     @Override
     public void setDataSource(@NonNull String path) throws IOException {
         setDataSourceJNI(path);
+    }
+
+    public void setSourceBuffer(short[] buffer, int bufferSize, int bitsPerSample, int channelCount, int sampleRate, int preferredBufferSize) {
+        setSourceBufferJNI(buffer, bufferSize, bitsPerSample, channelCount, sampleRate, preferredBufferSize);
     }
 
     @Override

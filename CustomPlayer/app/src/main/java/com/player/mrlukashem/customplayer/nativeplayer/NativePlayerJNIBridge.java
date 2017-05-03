@@ -11,7 +11,11 @@ class NativePlayerJNIBridge {
         System.loadLibrary("native-lib");
     }
 
+    protected native void createPlayerRequest();
+
     protected native void setDataSourceJNI(@NonNull String path);
+
+    protected native void setSourceBufferJNI(short[] buffer, int bufferSize, int bitsPerSample, int channelCount, int sampleRate, int preferredBufferSize);
 
     protected native void pauseJNI();
 

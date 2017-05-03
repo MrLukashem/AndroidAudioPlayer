@@ -1,6 +1,7 @@
 package com.player.mrlukashem.customplayer;
 
 import android.*;
+import android.Manifest;
 import android.app.Fragment;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -18,12 +19,15 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import com.player.mrlukashem.customplayer.fragments.SortedListFragment;
 import com.player.mrlukashem.customplayer.fragments.TrackListFragment;
 import com.player.mrlukashem.customplayer.interfaces.IShowAlbum;
+import com.player.mrlukashem.customplayer.latencyutils.LatencyMeasurement;
 import com.player.mrlukashem.customplayer.nativeplayer.NativePlayer;
 
 import java.util.ArrayList;
@@ -36,6 +40,8 @@ public class MainActivity extends AppCompatActivity
 
     private static final int REQUEST_PERMISSION = 12;
     public static final String FAV_TRACKS = "fav_tracks";
+    private String [] permissions = {Manifest.permission.RECORD_AUDIO};
+    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
 
     private void initFavouriteListFragment() {
         android.app.FragmentManager fragmentManager = getFragmentManager();
@@ -51,11 +57,6 @@ public class MainActivity extends AppCompatActivity
                 .commit();
 
         setTitle("Favourites tracks list");
-
-        NativePlayer nativePlayer = new NativePlayer();
-        nativePlayer.play();
-        nativePlayer.pause();
-        nativePlayer.getCurrentPosition();
     }
 
     @Override
@@ -85,6 +86,7 @@ public class MainActivity extends AppCompatActivity
             // TODO: To be filled.
         }
 
+        ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
         initFavouriteListFragment();
     }
 
@@ -172,6 +174,15 @@ public class MainActivity extends AppCompatActivity
             } else {
                 // User refused to grant permission.
             }
+        } else if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
+            LatencyMeasurement latencyMeasurement = new LatencyMeasurement(new LatencyMeasurement.LatencyResultListener() {
+                @Override
+                public void resultCallback(int latency) {
+                    Log.e("ewqewqeqwe", "ResultCallback!!!!! Latency = " + String.valueOf(latency) + " ms");
+//                    Toast.makeText(getApplicationContext(), "Latency = " + String.valueOf(latency) + " ms", Toast.LENGTH_LONG).show();
+                }
+            }, 10);
+            latencyMeasurement.start();
         }
     }
 

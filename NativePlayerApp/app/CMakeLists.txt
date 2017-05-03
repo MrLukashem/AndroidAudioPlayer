@@ -22,7 +22,9 @@ add_library( # Sets the name of the library.
              # file are automatically included.
              src/main/cpp/NativePlayer.cpp
              src/main/cpp/NativeExtractor.cpp
-             src/main/cpp/android_native_player_jni.cpp )
+             src/main/cpp/android_native_player_jni.cpp
+             src/main/cpp/NativeLatencyMeasurement.cpp
+              )
 
 include_directories( src/main/cpp/include/ )
 
