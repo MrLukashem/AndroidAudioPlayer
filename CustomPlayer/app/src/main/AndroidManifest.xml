@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.player.mrlukashem.customplayer">
+          package="com.player.mrlukashem.customplayer">
 
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
     <!-- To access Google+ APIs: -->
-    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
         android:allowBackup="true"
@@ -19,17 +19,19 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
+                <action android:name="android.intent.action.MAIN"/>
 
-                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity android:name=".player.PlayerActivity" />
+        <activity android:name=".player.PlayerActivity"/>
         <!-- <activity android:name=".AlbumsSortActivity"></activity> -->
         <activity
             android:name=".SettingsActivity"
-            android:label="@string/title_activity_settings" />
-        <activity android:name=".videoplayer.VideoPlayerActivity"></activity>
+            android:label="@string/title_activity_settings"/>
+        <activity android:name=".videoplayer.VideoPlayerActivity"/>
+        <activity android:name=".latencyutils.KotlinActivity">
+        </activity>
     </application>
 
 </manifest>

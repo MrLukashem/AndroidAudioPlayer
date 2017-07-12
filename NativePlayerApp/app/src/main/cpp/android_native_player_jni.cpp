@@ -30,7 +30,7 @@ namespace {
     jobject lmInstance;
     JNIEnv* jnienv = nullptr;
 
-    std::unique_ptr<NativePlayer> player = nullptr;
+    NativePlayer* player = nullptr;
 }
 
 JNIEXPORT void JNICALL
@@ -39,6 +39,35 @@ Java_com_player_mrlukashem_customplayer_latencyutils_LatencyMeasurement_release(
 
     destroyLatencyMeasurementClass();
 
+}
+
+JNIEXPORT void JNICALL
+Java_com_player_mrlukashem_customplayer_nativeplayer_NativePlayerJNIBridge_setSourceFloatBufferJNI(
+        JNIEnv *env, jobject instance, jfloatArray buffer_, jint bufferSize, jint bitsPerSample,
+        jint channelCount, jint sampleRate, jint preferredBufferSize) {
+    jfloat *buffer = env->GetFloatArrayElements(buffer_, NULL);
+
+    // TODO
+    if (player) {
+        player->setBufferSource(buffer, bufferSize, bitsPerSample, channelCount, sampleRate,
+                                preferredBufferSize, true);
+    }
+
+    env->ReleaseFloatArrayElements(buffer_, buffer, 0);
+}
+
+JNIEXPORT void JNICALL
+Java_com_player_mrlukashem_customplayer_nativeplayer_NativePlayerJNIBridge_setSourceByteBufferJNI(
+        JNIEnv *env, jobject instance, jbyteArray buffer_, jint bufferSize, jint bitsPerSample,
+        jint channelCount, jint sampleRate, jint preferredBufferSize) {
+    jbyte *buffer = env->GetByteArrayElements(buffer_, NULL);
+
+    // TODO
+    if (player) {
+        player->setBufferSource(buffer, bufferSize, bitsPerSample, channelCount, sampleRate, preferredBufferSize);
+    }
+
+    env->ReleaseByteArrayElements(buffer_, buffer, 0);
 }
 
 JNIEXPORT void JNICALL
@@ -60,7 +89,12 @@ JNIEXPORT void JNICALL
 Java_com_player_mrlukashem_customplayer_nativeplayer_NativePlayerJNIBridge_createPlayerRequest(
         JNIEnv *env, jobject instance) {
 
-    player = std::make_unique<NativePlayer>();
+    if (player != nullptr) {
+        player->release();
+        delete player;
+    }
+
+    player = new NativePlayer();
 }
 
 JNIEXPORT void JNICALL
@@ -148,10 +182,6 @@ JNIEXPORT void JNICALL
 Java_com_player_mrlukashem_customplayer_nativeplayer_NativePlayerJNIBridge_releaseJNI(
         JNIEnv *env, jobject instance) {
     ALOGV("releaseJNI");
-    if (player) {
-        player.release();
-        player = nullptr;
-    }
 }
 
 JNIEXPORT void JNICALL

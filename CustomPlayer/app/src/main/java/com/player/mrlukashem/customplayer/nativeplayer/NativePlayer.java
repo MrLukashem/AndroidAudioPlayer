@@ -25,6 +25,14 @@ public class NativePlayer extends NativePlayerJNIBridge implements IMediaPlayer 
         setSourceBufferJNI(buffer, bufferSize, bitsPerSample, channelCount, sampleRate, preferredBufferSize);
     }
 
+    public void setSourceBuffer(byte[] buffer, int bufferSize, int bitsPerSample, int channelCount, int sampleRate, int preferredBufferSize) {
+        setSourceByteBufferJNI(buffer, bufferSize, bitsPerSample, channelCount, sampleRate, preferredBufferSize);
+    }
+
+    public void setSourceBuffer(float[] buffer, int bufferSize, int bitsPerSample, int channelCount, int sampleRate, int preferredBufferSize) {
+        setSourceFloatBufferJNI(buffer, bufferSize, bitsPerSample, channelCount, sampleRate, preferredBufferSize);
+    }
+
     @Override
     public void pause() {
         pauseJNI();

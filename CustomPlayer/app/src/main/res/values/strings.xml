@@ -76,7 +76,27 @@
         <item>3</item>
     </string-array>
 
-    <string-array name="multi_select_list_preference_default_value" />
+    <string-array name="sample_rate_values">
+        <item>24Khz</item>
+        <item>32Khz</item>
+        <item>44.1Khz</item>
+        <item>48Khz</item>
+        <item>48Khz</item>
+        <item>Default (Native)</item>
+    </string-array>
+
+    <string-array name="bit_depth_values">
+        <item>8 bits</item>
+        <item>16 bits</item>
+        <item>float audio</item>
+    </string-array>
+
+    <string-array name="player_type_values">
+        <item>Audio Track</item>
+        <item>Native Player</item>
+    </string-array>
+
+    <string-array name="multi_select_list_preference_default_value"/>
 
     <string name="pref_title_system_sync_settings">System sync settings</string>
 

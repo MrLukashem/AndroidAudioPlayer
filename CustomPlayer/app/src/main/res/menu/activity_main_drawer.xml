@@ -11,9 +11,9 @@
             android:icon="@drawable/ic_menu_slideshow"
             android:title="Artists" />
         <item
-            android:id="@+id/nav_sort_by_videos"
+            android:id="@+id/nav_latency_test"
             android:icon="@drawable/ic_menu_slideshow"
-            android:title="Videos" />
+            android:title="Latency Test" />
     </group>
 
     <item android:title="Options">

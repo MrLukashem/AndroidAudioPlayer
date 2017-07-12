@@ -19,23 +19,27 @@ namespace {
     NativePlayer* me = nullptr;
 
     struct PlaybackContext {
-        short* data;
-        int size; // data size
-        int bufferSize; // data portion size
+        void* data;
+        SLuint32 size; // data size // (IN BYTES!)
+        SLuint32 bufferSize; // data portion size // (IN BYTES!)
     } playbackContext;
 
     void simpleBufferQueueCallback(SLAndroidSimpleBufferQueueItf itf, void *con) {
-        SLuint32 sizeToEnqueue = static_cast<SLuint32>(playbackContext.bufferSize);
-        if (playbackContext.size < playbackContext.bufferSize) {
-            sizeToEnqueue = static_cast<SLuint32>(playbackContext.size);
+        SLuint32 sizeToEnqueue = playbackContext.bufferSize;
+        if (playbackContext.size <= playbackContext.bufferSize) {
+            sizeToEnqueue = playbackContext.size;
             playbackContext.size = 0;
         } else if (playbackContext.size <= 0) {
+            //delete me;
             return;
         }
 
-        (*itf)->Enqueue(itf, playbackContext.data, static_cast<SLuint32>(sizeToEnqueue));
+        auto res = (*itf)->Enqueue(itf, playbackContext.data, static_cast<SLuint32>(sizeToEnqueue));
+        if (res != SL_RESULT_SUCCESS) {
+            ALOGV("ENQUEUE ERROR");
+        }
 
-        playbackContext.data += sizeToEnqueue;
+        playbackContext.data = (static_cast<uint8_t*>(playbackContext.data) + sizeToEnqueue);
         playbackContext.size -= sizeToEnqueue;
     }
 };
@@ -47,14 +51,8 @@ NativePlayer::NativePlayer() {
 }
 
 NativePlayer::~NativePlayer() {
-    if (m_dataSource.pLocator != nullptr) {
-        delete reinterpret_cast<SLDataLocator_AndroidSimpleBufferQueue*>(m_dataSource.pLocator);
-    }
-    if (m_dataSource.pFormat != nullptr) {
-        delete reinterpret_cast<SLDataFormat_PCM*>(m_dataSource.pFormat);
-    }
+    ALOGV("~NativePlayer() IN 3");
 
-    delete m_samplesBufferShort;
 }
 
 int NativePlayer::initialize(int mode) {
@@ -83,53 +81,107 @@ int NativePlayer::initialize(int mode) {
 }
 
 void NativePlayer::setBufferSource(
-        short *buffer, int size, int bitsPerSample, int channelCount, int sampleRate, int bufferSize) {
-    m_samplesBufferShort = new short[size];
-    std::memcpy(m_samplesBufferShort, buffer, size);
-    m_inputBufferSize = size;
-    m_bufferSize = bufferSize;
-
-    // Input configuration
-    SLuint16 containerSize = 0;
-    if (bitsPerSample > SL_PCMSAMPLEFORMAT_FIXED_16) {
-        containerSize = SL_PCMSAMPLEFORMAT_FIXED_32;
-    } else {
-        containerSize = static_cast<SLuint16>(bitsPerSample);
-    }
+        void *buffer, int size, int bitsPerSample, int channelCount, int sampleRate, int bufferSize,
+        bool isFloat) {
+    ALOGV("setBufferSource")
+    m_bufferSize = static_cast<SLuint32>(bufferSize);
     m_sourceMode = SourceMode::BUFFER_SOURCE;
 
-    auto format_pcm = new SLDataFormat_PCM;
-    format_pcm->bitsPerSample = static_cast<SLuint32>(bitsPerSample);
-    format_pcm->formatType = SL_DATAFORMAT_PCM;
-    format_pcm->channelMask = SL_SPEAKER_FRONT_RIGHT;
-    format_pcm->numChannels = static_cast<SLuint32>(channelCount);
-    format_pcm->containerSize = containerSize;
-    format_pcm->endianness = SL_BYTEORDER_LITTLEENDIAN;
-    format_pcm->samplesPerSec = static_cast<SLuint32>(sampleRate * 1000);
+    if (!isFloat) {
+        auto format_pcm = new SLDataFormat_PCM;
+        SLuint16 containerSize = 0;
+
+        // Input configuration
+        if (bitsPerSample > SL_PCMSAMPLEFORMAT_FIXED_16) {
+            containerSize = SL_PCMSAMPLEFORMAT_FIXED_32;
+        } else if (bitsPerSample == SL_PCMSAMPLEFORMAT_FIXED_16) {
+            containerSize = SL_PCMSAMPLEFORMAT_FIXED_16;
+            m_samplesBufferShort = new short[size];
+        } else if (bitsPerSample == SL_PCMSAMPLEFORMAT_FIXED_8) {
+            containerSize = SL_PCMSAMPLEFORMAT_FIXED_8;
+            m_samplesBufferShort = new uint8_t[size];
+        }
+        auto bytesInContainer = static_cast<SLuint32>(static_cast<float>(containerSize) / 8.0);
+        m_alignedFrameSize = containerSize;
+        m_inputBufferSize = size * bytesInContainer;
+        __android_log_print(ANDROID_LOG_INFO, "containersize", "inpusize = %d", (int)m_inputBufferSize);
+
+        format_pcm->bitsPerSample = static_cast<SLuint32>(bitsPerSample);
+        format_pcm->formatType = SL_DATAFORMAT_PCM;
+        format_pcm->numChannels = static_cast<SLuint32>(channelCount);
+        format_pcm->containerSize = containerSize;
+        format_pcm->endianness = SL_BYTEORDER_LITTLEENDIAN;
+        format_pcm->samplesPerSec = static_cast<SLuint32>(sampleRate * 1000);
+
+        if (channelCount == 1) {
+            format_pcm->channelMask = SL_SPEAKER_FRONT_RIGHT;
+        } else {
+            format_pcm->channelMask = SL_SPEAKER_FRONT_RIGHT | SL_SPEAKER_FRONT_LEFT;
+        }
+
+        m_dataSource.pFormat = static_cast<void*>(&(*format_pcm));
+    } else {
+        m_alignedFrameSize = 32;
+        m_inputBufferSize = size * static_cast<SLuint32>(32);
+
+        auto format_pcm = new SLAndroidDataFormat_PCM_EX;
+        format_pcm->bitsPerSample = 32;
+        format_pcm->formatType = SL_ANDROID_DATAFORMAT_PCM_EX;
+        format_pcm->channelMask = SL_SPEAKER_FRONT_RIGHT;
+        format_pcm->numChannels = static_cast<SLuint32>(channelCount);
+        format_pcm->containerSize = 32; //32 bits
+        format_pcm->endianness = SL_BYTEORDER_LITTLEENDIAN;
+        format_pcm->sampleRate = static_cast<SLuint32>(sampleRate * 1000);
+        format_pcm->representation = SL_ANDROID_PCM_REPRESENTATION_FLOAT;
+
+        if (channelCount == 1) {
+            format_pcm->channelMask = SL_SPEAKER_FRONT_RIGHT;
+        } else {
+            format_pcm->channelMask = SL_SPEAKER_FRONT_RIGHT | SL_SPEAKER_FRONT_LEFT;
+        }
+
+        m_dataSource.pFormat = static_cast<void*>(&(*format_pcm));
+    }
+
+    // copy buffer bytes to local memory
+    std::memcpy(m_samplesBufferShort, buffer, static_cast<size_t>(m_inputBufferSize));
+
+    if (bitsPerSample == SL_PCMSAMPLEFORMAT_FIXED_8) {
+        int8_t* bytesSamples = static_cast<int8_t *>(m_samplesBufferShort);
+        for (int i = 0; i < size; i++) {
+            // save 8bit signed value on 16 bit signed buffer.
+            int16_t temp = bytesSamples[i];
+            // change range from -128 : 127 to 0 : 256.
+            temp += 128;
+
+            // get 8bit unsigned representation of bytes's array element.
+            uint8_t* bytesUSamples = static_cast<uint8_t*>(m_samplesBufferShort);
+            uint8_t* source_ptr = &bytesUSamples[i];
+            // insert into memory value from range 0 : 256 to unsigned 8bit element.
+            *source_ptr = static_cast<uint8_t>(temp);
+        }
+    }
 
     auto sourceLocator = new SLDataLocator_AndroidSimpleBufferQueue;
     sourceLocator->numBuffers = static_cast<SLuint32>(channelCount);
     sourceLocator->locatorType = SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE;
-
-    m_dataSource.pFormat = static_cast<void*>(&(*format_pcm));
     m_dataSource.pLocator = static_cast<void*>(&(*sourceLocator));
 
     // Output configuration
     // Preparing output mix
-    SLObjectItf outputMix;
-    auto res = (*m_EngineItf)->CreateOutputMix(m_EngineItf, &outputMix, 0, m_idsArray, m_required);
+    auto res = (*m_EngineItf)->CreateOutputMix(m_EngineItf, &m_outputMix, 0, m_idsArray, m_required);
     if (res != SL_RESULT_SUCCESS) {
         ALOGV("CreateOutputMix error");
         return;
     }
-    res = (*outputMix)->Realize(outputMix, SL_BOOLEAN_FALSE);
+    res = (*m_outputMix)->Realize(m_outputMix, SL_BOOLEAN_FALSE);
     if (res != SL_RESULT_SUCCESS) {
         ALOGV("Realize CreateOutputMix error");
         return;
     }
     auto outputMixLocatorLocator = new SLDataLocator_OutputMix;
     outputMixLocatorLocator->locatorType = SL_DATALOCATOR_OUTPUTMIX;
-    outputMixLocatorLocator->outputMix = outputMix;
+    outputMixLocatorLocator->outputMix = m_outputMix;
 
     m_sink.pLocator = static_cast<void*>(&(*outputMixLocatorLocator));
     m_sink.pFormat = nullptr;
@@ -164,27 +216,27 @@ void NativePlayer::prepare() {
         m_required[0] = SL_BOOLEAN_TRUE;
 
         auto res = (*m_EngineItf)->CreateAudioPlayer(
-                m_EngineItf, &playerItf, &m_dataSource, &m_sink, 1, m_idsArray, m_required);
+                m_EngineItf, &m_PlayerItf, &m_dataSource, &m_sink, 1, m_idsArray, m_required);
         if (res != SL_RESULT_SUCCESS) {
             // TODO: Handle an error
             ALOGV("The engine has been created");
         }
 
-        res = (*playerItf)->Realize(playerItf, SL_BOOLEAN_FALSE);
+        res = (*m_PlayerItf)->Realize(m_PlayerItf, SL_BOOLEAN_FALSE);
         if (res != SL_RESULT_SUCCESS) {
             // TODO: Handle an error
             ALOGV("The engine has been created");
         }
 
-        res = (*playerItf)->GetInterface(
-                playerItf, SL_IID_PLAY, static_cast<void*>(&m_playbackItf));
+        res = (*m_PlayerItf)->GetInterface(
+                m_PlayerItf, SL_IID_PLAY, static_cast<void*>(&m_playbackItf));
         if (res != SL_RESULT_SUCCESS) {
             // TODO: Handle an error
             ALOGV("The engine has been created");
         }
 
-        res = (*playerItf)->GetInterface(
-                playerItf, SL_IID_ANDROIDSIMPLEBUFFERQUEUE,
+        res = (*m_PlayerItf)->GetInterface(
+                m_PlayerItf, SL_IID_ANDROIDSIMPLEBUFFERQUEUE,
                 static_cast<void*>(&m_simpleAndroidBufferQueue));
         if (res != SL_RESULT_SUCCESS) {
             // TODO: Handle an error
@@ -199,19 +251,32 @@ void NativePlayer::prepare() {
             ALOGV("The engine has been created");
         }
 
+        SLuint32 frameSizeInBytes = static_cast<SLuint32>(static_cast<double>(m_alignedFrameSize) / 8.0);
+        auto bufferSizeInBytes =
+                frameSizeInBytes /*Frame size in bytes*/ *
+                m_bufferSize; // Buffer size in Frames
         playbackContext.data = m_samplesBufferShort;
-        playbackContext.bufferSize = m_bufferSize;
+        playbackContext.bufferSize = bufferSizeInBytes;
         playbackContext.size = m_inputBufferSize;
     }
 }
 
 int NativePlayer::play(int dataID) {
-    (*m_simpleAndroidBufferQueue)->Enqueue(m_simpleAndroidBufferQueue, m_samplesBufferShort,
-                                           static_cast<SLuint32>(m_bufferSize));
-    playbackContext.data += m_bufferSize;
-    playbackContext.size -= m_inputBufferSize - m_bufferSize;
+    SLuint32 frameSizeInBytes = static_cast<SLuint32>(static_cast<double>(m_alignedFrameSize) / 8.0);
+    auto bufferSizeInBytes =
+            frameSizeInBytes /*Frame size in bytes*/ *
+            m_bufferSize; // Buffer size in Frames
+    auto res = (*m_simpleAndroidBufferQueue)->Enqueue(m_simpleAndroidBufferQueue, m_samplesBufferShort,
+                                                      bufferSizeInBytes);
+    if (res != SL_RESULT_SUCCESS) {
+        ALOGV("ENQUEUE ERROR");
+    }
 
-    auto res = (*m_playbackItf)->SetPlayState(m_playbackItf, SL_PLAYSTATE_PLAYING);
+    playbackContext.data = static_cast<void*>(static_cast<uint8_t*>(playbackContext.data)
+                                              + (bufferSizeInBytes));
+    playbackContext.size -= bufferSizeInBytes;
+
+    res = (*m_playbackItf)->SetPlayState(m_playbackItf, SL_PLAYSTATE_PLAYING);
     if (res != SL_RESULT_SUCCESS) {
         // TODO: Handle an error
         ALOGV("The engine has been created");
@@ -238,6 +303,34 @@ void NativePlayer::stop() {
 
 void NativePlayer::release() {
     ALOGV("The engine has been created");
+    if (m_alignedFrameSize == 8) {
+        delete [] static_cast<uint8_t*>(m_samplesBufferShort);
+    } else if (m_alignedFrameSize == 16) {
+        delete [] static_cast<short*>(m_samplesBufferShort);
+    } else if (m_alignedFrameSize == 32) {
+        delete [] static_cast<float*>(m_samplesBufferShort);
+    }
+
+    (*m_playbackItf)->SetPlayState(m_playbackItf, SL_PLAYSTATE_STOPPED);
+    (*m_simpleAndroidBufferQueue)->Clear(m_simpleAndroidBufferQueue);
+    ALOGV("~NativePlayer() IN 4");
+    (*m_PlayerItf)->Destroy(m_PlayerItf);
+    (*m_outputMix)->Destroy(m_outputMix);
+    ALOGV("~NativePlayer() IN 5");
+
+    ALOGV("~NativePlayer() IN 6");
+    (*m_EngineObjectItf)->Destroy(m_EngineObjectItf);
+    ALOGV("~NativePlayer() OUT");
+
+    ALOGV("~NativePlayer() IN");
+    if (m_dataSource.pLocator != nullptr) {
+        delete reinterpret_cast<SLDataLocator_AndroidSimpleBufferQueue*>(m_dataSource.pLocator);
+    }
+
+    ALOGV("~NativePlayer() IN 2" );
+    if (m_dataSource.pFormat != nullptr) {
+        delete reinterpret_cast<SLDataFormat_PCM*>(m_dataSource.pFormat);
+    }
 }
 
 void NativePlayer::emptyBufferCallback() {
@@ -247,20 +340,3 @@ void NativePlayer::emptyBufferCallback() {
         ALOGV("The engine has been created");
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

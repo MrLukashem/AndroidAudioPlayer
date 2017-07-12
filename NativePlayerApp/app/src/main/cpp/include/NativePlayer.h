@@ -37,7 +37,7 @@ public:
 
     virtual void release();
 
-    virtual void setBufferSource(short *, int, int, int, int, int);
+    virtual void setBufferSource(void *, int, int, int, int, int, bool = false);
 
     virtual SongsVec getSongs();
 
@@ -61,6 +61,7 @@ private:
     SLEngineItf m_EngineItf;
 
     SLObjectItf m_PlayerItf;
+    SLObjectItf m_outputMix;
     SLPlayItf  m_playbackItf;
     SLAndroidSimpleBufferQueueItf m_simpleAndroidBufferQueue;
 
@@ -73,9 +74,10 @@ private:
     int m_sourceMode = DATA_SOURCE;
 
     // Playback parameters
-    int m_bufferSize; // prefered buffer size
-    int m_inputBufferSize; // input buffer size
-    int m_sampleRate; // prefered sample rate
+    SLuint32 m_bufferSize; // prefered buffer size (IN FRAMES!)
+    SLuint32 m_inputBufferSize; // input buffer size (IN BYTES!)
+    SLuint32 m_alignedFrameSize = 0; // IN BYTES!
+    int m_sampleRate; // prefered sample rate // IN HZ!
     // end playback parameters
     SLDataSource m_dataSource;
     SLDataSink m_sink;
@@ -83,7 +85,7 @@ private:
     SLboolean m_required[3];
     SLInterfaceID m_idsArray[3];
 
-    short* m_samplesBufferShort = nullptr;
+    void* m_samplesBufferShort = nullptr;
 
     virtual int initialize(int mode);
 

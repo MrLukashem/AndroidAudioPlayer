@@ -9,6 +9,9 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.preference.Preference;
 import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
@@ -24,6 +27,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import com.player.mrlukashem.customplayer.fragments.LatencyTestFragment;
 import com.player.mrlukashem.customplayer.fragments.SortedListFragment;
 import com.player.mrlukashem.customplayer.fragments.TrackListFragment;
 import com.player.mrlukashem.customplayer.interfaces.IShowAlbum;
@@ -154,6 +158,12 @@ public class MainActivity extends AppCompatActivity
         } else if (id == R.id.nav_settings) {
             Intent intent = new Intent(this, SettingsActivity.class);
             startActivity(intent);
+        } else if (id == R.id.nav_latency_test) {
+            fragmentManager
+                    .beginTransaction()
+                    .replace(R.id.content_main, new LatencyTestFragment())
+                    .addToBackStack(null)
+                    .commit();
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -175,14 +185,14 @@ public class MainActivity extends AppCompatActivity
                 // User refused to grant permission.
             }
         } else if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
-            LatencyMeasurement latencyMeasurement = new LatencyMeasurement(new LatencyMeasurement.LatencyResultListener() {
-                @Override
-                public void resultCallback(int latency) {
-                    Log.e("ewqewqeqwe", "ResultCallback!!!!! Latency = " + String.valueOf(latency) + " ms");
-//                    Toast.makeText(getApplicationContext(), "Latency = " + String.valueOf(latency) + " ms", Toast.LENGTH_LONG).show();
-                }
-            }, 10);
-            latencyMeasurement.start();
+     //       LatencyMeasurement latencyMeasurement = new LatencyMeasurement(new LatencyMeasurement.LatencyResultListener() {
+            //    @Override
+           //     public void resultCallback(int latency) {
+      //              Log.e("ewqewqeqwe", "ResultCallback!!!!! Latency = " + String.valueOf(latency) + " ms");
+//     ///               Toast.makeText(getApplicationContext(), "Latency = " + String.valueOf(latency) + " ms", Toast.LENGTH_LONG).show();
+         //       }
+         //   }, 10, getApplicationContext());
+           // latencyMeasurement.start();
         }
     }
 

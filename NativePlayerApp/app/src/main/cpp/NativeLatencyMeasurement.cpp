@@ -7,6 +7,8 @@
 #include <sstream>
 #include <android/log.h>
 #include <math.h>
+#include <thread>
+#include <condition_variable>
 #include <assert.h>
 #include <pthread.h>
 #include <tuple>
@@ -15,6 +17,9 @@
 #define ALOGV(x) __android_log_print(ANDROID_LOG_VERBOSE, APPNAME, x);
 
 namespace {
+    std::condition_variable cv;
+    std::mutex cv_m;
+
     auto to_string = [](auto value) -> std::string {
         std::ostringstream ss;
         ss << value;
@@ -31,7 +36,8 @@ namespace {
     pthread_mutex_t mutex;
 
     void inputBufferCallback(SLAndroidSimpleBufferQueueItf itf, void *context) {
-        //ALOGV("Input Buffer Queue Callback");
+        ++self->m_totalCallbacks;
+   //     __android_log_print(ANDROID_LOG_INFO, "cb", "%d", self->m_totalCallbacks);
 
     //   pthread_mutex_lock(&mutex);
 
@@ -66,6 +72,7 @@ void NativeLatencyMeasurement::deinitOpenSL() {
 }
 
 NativeLatencyMeasurement::~NativeLatencyMeasurement() {
+    ALOGV("!DESTROY");
 	deinitOpenSL();
 
     if (m_inputBuffer != nullptr) {
@@ -116,6 +123,8 @@ SLuint32 NativeLatencyMeasurement::initializeRecorder() {
 		nullptr,
 	};
 
+    m_sampleRate = 44100;
+    m_bitDepth = 16;
 	// Init sink; Recording input.
     SLDataLocator_AndroidSimpleBufferQueue inputLocator = {
             SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE,
@@ -130,11 +139,11 @@ SLuint32 NativeLatencyMeasurement::initializeRecorder() {
     }
     SLDataFormat_PCM inputFormat = {
             SL_DATAFORMAT_PCM, // formatType.
-            2, // num of channels.
+            1, // num of channels.
             static_cast<SLuint32 >(m_sampleRate * 1000), // sample rate.
             static_cast<SLuint32 >(m_bitDepth), // bits per sample.
             containerSize,
-            SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT,
+            SL_SPEAKER_FRONT_RIGHT,
             SL_BYTEORDER_LITTLEENDIAN,
     };
     dataSink = {
@@ -189,8 +198,8 @@ SLuint32 NativeLatencyMeasurement::startRecording() {
         return res;
     }
 
-    m_inputBuffer = new short[1000]; // TODO: Have to chnage value acording to AudioSystem getBufferSize.
-    m_inputBufferSize = 1000;
+    m_inputBuffer = new short[128]; // TODO: Have to chnage value acording to AudioSystem getBufferSize.
+    m_inputBufferSize = 128;
 
     res = (*inputBufferQueueItf)->Enqueue(inputBufferQueueItf, static_cast<void*>(m_inputBuffer), m_inputBufferSize*2);
     if (res != SL_RESULT_SUCCESS) {
@@ -198,6 +207,15 @@ SLuint32 NativeLatencyMeasurement::startRecording() {
     }
 
     res =  (*recordItf)->SetRecordState(recordItf, SL_RECORDSTATE_RECORDING);
+
+    std::thread playRequestThread([this]() {
+        std::unique_lock<std::mutex> lk(cv_m);
+        cv.wait(lk);
+
+       triggerJNIPlayRequestCallback();
+    });
+    playRequestThread.detach();
+
     return res;
 }
 
@@ -244,82 +262,102 @@ int NativeLatencyMeasurement::getMicDeviceID() {
 	return 0;
 }
 
-std::pair<int, int> NativeLatencyMeasurement::getAmplitudeSum() { // Not thread safe.
+std::pair<int, int> NativeLatencyMeasurement::getAmplitudeSum(int& amplitudeSamples) { // Not thread safe.
     int amplitudeSum = 0;
     int totalSamples = m_inputBufferSize;
 
     for (int i = 0; i < m_inputBufferSize; i++) {
-        if (m_inputBuffer[i] > 0) {
-            amplitudeSum += m_inputBuffer[i];
-        } else {
-            totalSamples--;
-        }
+       // if (m_inputBuffer[i] > 0) {
+            amplitudeSum += static_cast<int>(fabs(m_inputBuffer[i]));
+        //} else {
+        //   totalSamples--;
+      //  }
     }
 
-    return std::make_pair(amplitudeSum, totalSamples);
+    amplitudeSamples = m_inputBufferSize;
+    return std::make_pair(amplitudeSum, m_inputBufferSize);
 }
 
 bool NativeLatencyMeasurement::measureAudioLatency() {
-    auto avgDataAmplitude = getAmplitudeSum();
-    auto avgAmplitude = avgDataAmplitude.first / avgDataAmplitude.second;
+  //  ALOGV("measureAudioLatency in");
+    int amplitudeSamples = 1;
+    auto avgDataAmplitude = getAmplitudeSum(amplitudeSamples);
+    auto avgAmplitude = avgDataAmplitude.first / amplitudeSamples;
 
     bool thresholdFound = false;
     if (avgAmplitude > m_noiseAmplitudeThreshold /*+20db*/) { // We've caught output wave.
+     //   ALOGV("in");
+        int samplesCount = 0;
         for (int i = 0; i < m_inputBufferSize; i++) {
-            m_totalSamplesReceived++;
-            if (m_inputBuffer[i] > m_noiseAmplitudeThreshold) {
+            samplesCount++;
+            if (static_cast<int>(fabs(m_inputBuffer[i])) > m_noiseAmplitudeThreshold) {
                 thresholdFound = true;
                 break;
             }
         }
-    } else {
-        m_totalSamplesReceived += avgDataAmplitude.second;
-    }
 
+        m_totalSamplesReceived += samplesCount;
+        ALOGV("out avgamplitude > threshold");
+    } else {
+        m_totalSamplesReceived += amplitudeSamples;
+      // __android_log_print(ANDROID_LOG_INFO, "measure", "samples = %d", (int)m_totalSamplesReceived);
+    }
+    //__android_log_print(ANDROID_LOG_INFO, "Threshold found", "samples = %d", (int)m_totalSamplesReceived);
+  //  ALOGV("measureAudioLatency STEP");
     if (thresholdFound) {
         computeAudioLatency();
     }
-
+   // ALOGV("measureAudioLatency out");
     return thresholdFound;
 }
 
 void NativeLatencyMeasurement::measureEnvironmentNoise() {
-    auto avgDataAmplitude = getAmplitudeSum();
-    auto avgAmplitude = avgDataAmplitude.first / avgDataAmplitude.second;
+    int amplitudeSamples = 1;
+    auto avgDataAmplitude = getAmplitudeSum(amplitudeSamples);
+    auto avgAmplitude = avgDataAmplitude.first / amplitudeSamples;
 
     m_avgAmplitude = (m_avgAmplitude + avgAmplitude) / 2;
-    m_totalSamplesReceived += avgDataAmplitude.second;
+    m_totalSamplesReceived += amplitudeSamples;
 
-    if (m_totalSamplesReceived >= m_sampleRate) {
+    if (m_totalSamplesReceived >= m_sampleRate ) {
+        ALOGV("Mersure ennoise DONE!!!!");
         m_environmentNoiseChecked = true;
 
         m_environmentNoise = amplitude_to_db(m_avgAmplitude) + 20.0; // +20db
         m_noiseAmplitudeThreshold = static_cast<int>(pow(10.0, m_environmentNoise / 20.0) * 32767.0);
         m_totalSamplesReceived = 0; // Now we use this member variable to measure latency.
+        m_totalCallbacks = 0;
 
-     //   pthread_mutex_unlock(&mutex);
-        triggerJNIPlayRequestCallback();
-        ALOGV("Environment noise checked =");
+
+        cv.notify_all();
     }
 }
 
 void NativeLatencyMeasurement::processMeasurement(SLAndroidSimpleBufferQueueItf itf, void *context) {
     auto stopEnqueue = false;
-
+  //  ALOGV("ENQUEUE IN =");
     if (not m_environmentNoiseChecked) {
         measureEnvironmentNoise();
     } else {
         stopEnqueue = measureAudioLatency();
     }
-
+ //   ALOGV("ENQUEUE STEP 2");
     //pthread_mutex_unlock(&mutex);
     if (!stopEnqueue) {
      //   pthread_mutex_unlock(&mutex);
-        (*itf)->Enqueue(itf, m_inputBuffer, m_inputBufferSize);
+   //     ALOGV("ENQUEUE OUT ENQUEUE");
+       auto res = (*itf)->Enqueue(itf, m_inputBuffer, m_inputBufferSize*2);
+        if (res != SL_RESULT_SUCCESS) {
+            res = (*itf)->Enqueue(itf, m_inputBuffer, m_inputBufferSize*2);
+            __android_log_print(ANDROID_LOG_INFO, "processMearement", "res = %d", res);
+        }
+
     }
+   // ALOGV("ENQUEUE OUT2");
 }
 
 void NativeLatencyMeasurement::triggerJNIPlayRequestCallback() {
+    ALOGV("PLAY REQUEST");
     m_playRequestCallback();
 }
 
@@ -328,10 +366,18 @@ void NativeLatencyMeasurement::triggerJNICallback(int latency) {
 }
 
 void NativeLatencyMeasurement::computeAudioLatency() {
-    double samplesReceived = static_cast<double>(m_totalSamplesReceived);
+    __android_log_print(ANDROID_LOG_INFO, "LATENCY catched! callbacks = ", "%d", self->m_totalCallbacks);
+    __android_log_print(ANDROID_LOG_INFO, "LATENCY catched! samplerate = ", "%d", m_sampleRate);
+    __android_log_print(ANDROID_LOG_INFO, "LATENCY catched! samplesreceived = ", "%d", m_totalSamplesReceived);
+
+    double samplesReceived = static_cast<double>(m_totalSamplesReceived); // channel count
     double sampleRate = static_cast<double>(m_sampleRate);
     int latency = static_cast<int>((samplesReceived / sampleRate) * 1000.0);
-    triggerJNICallback(latency);
+
+    std::thread t([=] () {
+        triggerJNICallback(latency);
+    });
+    t.detach();
 }
 
 

@@ -17,6 +17,10 @@ class NativePlayerJNIBridge {
 
     protected native void setSourceBufferJNI(short[] buffer, int bufferSize, int bitsPerSample, int channelCount, int sampleRate, int preferredBufferSize);
 
+    protected native void setSourceByteBufferJNI(byte[] buffer, int bufferSize, int bitsPerSample, int channelCount, int sampleRate, int preferredBufferSize);
+
+    protected native void setSourceFloatBufferJNI(float[] buffer, int bufferSize, int bitsPerSample, int channelCount, int sampleRate, int preferredBufferSize);
+
     protected native void pauseJNI();
 
     protected native void playJNI();

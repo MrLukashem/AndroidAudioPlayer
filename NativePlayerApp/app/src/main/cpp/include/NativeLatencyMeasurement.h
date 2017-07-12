@@ -38,6 +38,8 @@ public:
 	int startTest(int /*BitDepth*/, int /*SampleRate*/);
 
 	void processMeasurement(SLAndroidSimpleBufferQueueItf, void*);
+
+	int m_totalCallbacks = 0;
 protected:
 	const int UN_INITIALIZED = -1;
 
@@ -62,7 +64,7 @@ protected:
 
     void triggerJNIPlayRequestCallback();
 
-    std::pair<int, int> getAmplitudeSum();
+    std::pair<int, int> getAmplitudeSum(int&);
 };
 
 
